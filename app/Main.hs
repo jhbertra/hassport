@@ -6,6 +6,7 @@
 module Main where
 
 import Control.Monad.Identity
+import Control.Monad.IO.Class (MonadIO(..))
 import Control.Monad.Reader (MonadReader, ReaderT(..), ask, runReaderT)
 import Data.Text (Text)
 import System.Environment
@@ -15,26 +16,29 @@ import Hassport.Local
 
 import qualified Data.Text as T
 
-type AppState = LocalAuthProvider String App
-newtype App a = App { unApp :: ReaderT AppState IO a }
-    deriving (Functor, Applicative, Monad, MonadReader AppState)
-
-runApp :: App a -> AppState -> IO a
-runApp app state = runReaderT (unApp app) state
-
-instance MonadAuth LocalAuthRequest String App where
-    liftAuth auth = ask >>= runAuthT auth
+data Provider
+    = Local1 LocalAuthRequest
+    | Local2 LocalAuthRequest
 
 main :: IO ()
 main = do
     [pwd] <- getArgs
-    print =<< runApp (app $ T.pack pwd) appConfig
+    authResult1 <- runAuth (auth1 $ T.pack pwd) authProvider
+    authResult2 <- runAuth (auth2 $ T.pack pwd) authProvider
+    print authResult1
+    print authResult2
   where
-    app :: Text -> App (AuthResult String)
-    app pwd = liftAuth $ authenticate $ LocalAuthRequest "baz" pwd
+    auth1 pwd = authenticateWith Local1 $ LocalAuthRequest "baz" pwd
+    auth2 pwd = authenticateWith Local2 $ LocalAuthRequest "baz" pwd
 
-appConfig :: AppState
-appConfig = localProvider $ \(LocalAuthRequest username password) ->
-    pure $ if password == "foo"
-        then Right "bar"
-        else Left $ NotAuthorized "Bad"
+authProvider :: AuthProvider Provider Text
+authProvider = AuthProvider verify
+  where
+    verify (Local1 (LocalAuthRequest username password)) =
+        pure $ if password == "foo"
+            then Right username
+            else Left $ NotAuthorized "Bad"
+    verify (Local2 (LocalAuthRequest username password)) =
+        pure $ if password == "food"
+            then Right username
+            else Left $ NotAuthorized "Bad"
