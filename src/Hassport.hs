@@ -1,20 +1,22 @@
 {-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Hassport
     ( AuthError(..)
     , AuthResult
     , AuthProvider(..)
-    , AuthT(..)
-    , Auth
+    , Auth(..)
     , MonadAuth(..)
     , authenticate
+    , authenticateWith
     , runAuth
     ) where
 
 import Data.Text (Text)
 import Control.Monad.Identity (Identity(..))
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.Reader (ReaderT, MonadReader(..), ask, runReaderT)
 
 data AuthError
     = NotAuthorized Text
@@ -23,28 +25,28 @@ data AuthError
 
 type AuthResult a = Either AuthError a
 
-newtype AuthProvider req res m = AuthProvider { runAuthProvider :: req -> m (AuthResult res) } 
-newtype AuthT req res m a = AuthT { runAuthT :: AuthProvider req res m -> m a }
-type Auth req res a = AuthT req res Identity a
+newtype AuthProvider r u = AuthProvider { runAuthProvider :: r -> IO (AuthResult u) } 
+newtype Auth r u a = Auth
+    { unAuth :: ReaderT (AuthProvider r u) IO a
+    } deriving
+    ( Functor
+    , Applicative
+    , Monad
+    , MonadIO
+    , MonadReader (AuthProvider r u)
+    )
 
-runAuth :: Auth req res a -> AuthProvider req res Identity -> a
-runAuth auth provider = runIdentity $ runAuthT auth provider
+runAuth :: Auth r u a -> AuthProvider r u -> IO a
+runAuth auth provider = runReaderT (unAuth auth) provider
 
-instance Functor f => Functor (AuthT req res f) where
-    fmap f (AuthT auth) = AuthT $ fmap f . auth
+authenticate :: r -> Auth r u (AuthResult u)
+authenticate r = fmap runAuthProvider ask >>= liftIO . ($ r)
 
-instance Applicative f => Applicative (AuthT req res f) where
-    pure = AuthT . const . pure
-    (AuthT authF) <*> (AuthT auth) = AuthT $ \config -> authF config <*> auth config
+authenticateWith :: (a -> r) -> a -> Auth r u (AuthResult u)
+authenticateWith f = authenticate . f
 
-instance Monad m => Monad (AuthT req res m) where
-    (AuthT auth) >>= f = AuthT $ \config -> do
-        a <- auth config
-        let nextAuth = runAuthT $ f a
-        nextAuth config
+class MonadIO m => MonadAuth r u m where
+    liftAuth :: Auth r u a -> m a
 
-authenticate :: Monad m => req -> AuthT req res m (AuthResult res)
-authenticate req = AuthT $ \(AuthProvider auth) -> auth req
-
-class Monad m => MonadAuth req res m | req res -> m where
-    liftAuth :: AuthT req res m a -> m a
+instance MonadAuth r u (Auth r u) where
+    liftAuth = id

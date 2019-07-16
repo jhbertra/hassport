@@ -5,11 +5,12 @@
 module Hassport.Local
     ( LocalAuthRequest(..)
     , LocalAuthProvider
-    , localProvider
+    , makeLocalProvider
     ) where
 
 import Data.Text (Text)
 import Control.Monad.Identity
+import Control.Monad.IO.Class (MonadIO(..))
 
 import Hassport
 
@@ -17,7 +18,7 @@ data LocalAuthRequest = LocalAuthRequest
     { requestUsername :: !Text
     , requestPassword :: !Text
     }
-type LocalAuthProvider user m = AuthProvider LocalAuthRequest user m
+type LocalAuthProvider u = AuthProvider LocalAuthRequest u
 
-localProvider :: Monad m => (LocalAuthRequest -> m (AuthResult user)) -> LocalAuthProvider user m
-localProvider = AuthProvider
+makeLocalProvider :: (LocalAuthRequest -> IO (AuthResult u)) -> LocalAuthProvider u
+makeLocalProvider = AuthProvider
