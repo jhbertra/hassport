@@ -1,13 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 
 module Main where
 
-import Control.Monad.Identity
-import Control.Monad.IO.Class (MonadIO(..))
-import Control.Monad.Reader (MonadReader, ReaderT(..), ask, runReaderT)
 import Data.Text (Text)
 import System.Environment
 
@@ -23,8 +17,9 @@ data Provider
 main :: IO ()
 main = do
     [pwd] <- getArgs
-    authResult1 <- runAuth (auth1 $ T.pack pwd) authProvider
-    authResult2 <- runAuth (auth2 $ T.pack pwd) authProvider
+    let password = T.pack pwd
+    authResult1 <- runAuth (auth1 password) authProvider
+    authResult2 <- runAuth (auth2 password) authProvider
     print authResult1
     print authResult2
   where

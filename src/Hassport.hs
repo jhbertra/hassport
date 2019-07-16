@@ -14,7 +14,6 @@ module Hassport
     ) where
 
 import Data.Text (Text)
-import Control.Monad.Identity (Identity(..))
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Reader (ReaderT, MonadReader(..), ask, runReaderT)
 

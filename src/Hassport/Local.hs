@@ -1,7 +1,3 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE KindSignatures #-}
-
 module Hassport.Local
     ( LocalAuthRequest(..)
     , LocalAuthProvider
@@ -9,8 +5,6 @@ module Hassport.Local
     ) where
 
 import Data.Text (Text)
-import Control.Monad.Identity
-import Control.Monad.IO.Class (MonadIO(..))
 
 import Hassport
 
